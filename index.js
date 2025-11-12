@@ -1,8 +1,9 @@
 const express = require('express');
 const cors = require('cors');
 const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
+const e = require('express');
 const app = express();
-const port = process.env.PORT || 3000;
+const port = process.env.PORT || 5000;
 app.use(cors());
 app.use(express.json())
 
@@ -19,28 +20,55 @@ async function run() {
     await client.connect();
    
 
-    const db = client.db('partnerProfile')
-    const productsCollection = db.collection('allProfile')
-    app.post('/products', async(req, res) =>{
+    const db = client.db('partnerProfile');
+    const productsCollection = db.collection('allProfile');
+    const userCollection = db.collection('users');
+    
+
+    app.post('/users', async(req, res) =>{
+      
+      const newUser = req.body;
+      const email =req.body.email;
+      const existingUser = await userCollection.findOne(query);
+      if (existingUser){
+        res.send('user already exist')
+      }
+      else{
+         const result = await userCollection.insertOne(newUser);
+      res.send(result);
+
+      }
+
+     
+    })
+
+
+
+    app.post('/partner', async(req, res) =>{
       const newProduct = req.body;
       const result = await productsCollection.insertOne(newProduct);
       res.send(result);
 
-    })
-     app.get('/products', async(req, res) =>{
-      const cursor = productsCollection.find();
+    });
+
+     app.get('/partner', async (req, res) => {
+      const email = req.query.email;
+      const query = {};
+      if (email) query.email = email;
+
+      const cursor = productsCollection.find(query).sort({ rating: -1 });
       const result = await cursor.toArray();
       res.send(result);
+    });
 
-    })
-    app.get('/products/:id', async(req, res) => {
+    app.get('/partner/:id', async(req, res) => {
       const id = req.params.id;
       const query = {_id: new ObjectId(id)}
       const result = await productsCollection.findOne(query);
       res.send(result);
     })
 
-    app.patch('/products/:id', async(req, res) => {
+    app.patch('/partner/:id', async(req, res) => {
       const id = req.params.id;
       const updatedProduct = req.body;
       const query = {_id: new ObjectId(id)}
@@ -51,7 +79,7 @@ async function run() {
       res.send(result);
     })
 
-    app.delete('/products/:id', async(req, res) => {
+    app.delete('/partner/:id', async(req, res) => {
       const id = req.params.id;
       const query = {_id: new ObjectId(id)}
       const result = await productsCollection.deleteOne(query);
