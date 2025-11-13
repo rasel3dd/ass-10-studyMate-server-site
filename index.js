@@ -7,6 +7,7 @@ const port = process.env.PORT || 5000;
 app.use(cors());
 app.use(express.json())
 
+
 const uri = "mongodb+srv://StudyMate-db-user:zaSip8DHWF1MyjM5@cluster0.k6tagxb.mongodb.net/?appName=Cluster0";
 const client = new MongoClient(uri, {
   serverApi: {
@@ -23,15 +24,34 @@ async function run() {
     const db = client.db('partnerProfile');
     const productsCollection = db.collection('allProfile');
     const userCollection = db.collection('users');
-    
+    const myConnection = db.collection('connection');
+
+
+    app.post('/connection', async(req, res) =>{
+      
+      const partnerConnection = req.body;
+      const query = { email: partnerConnection.email };
+      const existingConnection = await myConnection.findOne(query);
+      if (existingConnection){
+        res.send({message: 'partner already exist'})
+      }
+      else{
+         const result = await myConnection.insertOne(partnerConnection);
+      res.send(result);
+
+      }
+
+     
+    })
+
 
     app.post('/users', async(req, res) =>{
       
       const newUser = req.body;
-      const email =req.body.email;
+      const query = { email: newUser.email };
       const existingUser = await userCollection.findOne(query);
       if (existingUser){
-        res.send('user already exist')
+        res.send({message: 'user already exist'})
       }
       else{
          const result = await userCollection.insertOne(newUser);
@@ -50,6 +70,12 @@ async function run() {
       res.send(result);
 
     });
+
+    app.get('/partner-List', async ( req, res) =>{
+      const cursor = productsCollection.find().limit(30);
+      const result = await cursor.toArray();
+      res.send(result);
+    })
 
      app.get('/partner', async (req, res) => {
       const email = req.query.email;
