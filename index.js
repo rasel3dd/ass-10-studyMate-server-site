@@ -40,9 +40,16 @@ async function run() {
       res.send(result);
 
       }
-
-     
     })
+    app.get('/connection', async (req, res) => {
+  const email = req.query.email;
+  const query = {};
+  if (email) query.email = email;
+
+  const cursor = myConnection.find(query);
+  const result = await cursor.toArray();
+  res.send(result);
+});
 
 
     app.post('/users', async(req, res) =>{
