@@ -50,6 +50,17 @@ async function run() {
   const result = await cursor.toArray();
   res.send(result);
 });
+app.delete('/connection/:id', async (req, res) => {
+  const id = req.params.id;
+  try {
+    const result = await myConnection.deleteOne({ _id: id });
+
+    res.send(result);
+  } catch (error) {
+    console.error("Delete Error:", error);
+    res.status(500).send({ message: "Error deleting connection", error });
+  }
+});
 
 
     app.post('/users', async(req, res) =>{
