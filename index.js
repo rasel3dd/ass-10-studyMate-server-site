@@ -1,6 +1,6 @@
 const express = require('express');
 const cors = require('cors');
-const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
+const { MongoClient, ServerApiVersion } = require('mongodb');
 const e = require('express');
 const app = express();
 const port = process.env.PORT || 5000;
@@ -25,42 +25,44 @@ async function run() {
     const productsCollection = db.collection('allProfile');
     const userCollection = db.collection('users');
     const myConnection = db.collection('connection');
+    const topCollection = db.collection('topList');
 
 
-    app.post('/connection', async(req, res) =>{
-      
+      app.post('/connection', async (req, res) => {
       const partnerConnection = req.body;
-      const query = { email: partnerConnection.email };
-      const existingConnection = await myConnection.findOne(query);
-      if (existingConnection){
-        res.send({message: 'partner already exist'})
-      }
-      else{
-         const result = await myConnection.insertOne(partnerConnection);
+      const exists = await myConnection.findOne({ email: partnerConnection.email });
+
+      if (exists) return res.send({ message: "partner already exist" });
+
+      const result = await myConnection.insertOne(partnerConnection);
       res.send(result);
+    });
 
-      }
-    })
-    app.get('/connection', async (req, res) => {
-  const email = req.query.email;
-  const query = {};
-  if (email) query.email = email;
+   app.get('/connection', async (req, res) => {
+      const email = req.query.email;
+      const query = email ? { email } : {};
+      const result = await myConnection.find(query).toArray();
+      res.send(result);
+    });
+   app.delete('/connection/:id', async (req, res) => {
+      const id = req.params.id;
 
-  const cursor = myConnection.find(query);
-  const result = await cursor.toArray();
-  res.send(result);
-});
-app.delete('/connection/:id', async (req, res) => {
-  const id = req.params.id;
-  try {
-    const result = await myConnection.deleteOne({ _id: id });
+      const result = await myConnection.deleteOne({ _id: id });  // string ID
+      res.send(result);
+    });
 
-    res.send(result);
-  } catch (error) {
-    console.error("Delete Error:", error);
-    res.status(500).send({ message: "Error deleting connection", error });
-  }
-});
+
+app.put('/connection/:id', async (req, res) => {
+      const id = req.params.id;
+      const updatedInfo = req.body;
+
+      const result = await myConnection.updateOne(
+        { _id: id },               // ← SAME TYPE as delete & insert
+        { $set: updatedInfo }
+      );
+
+      res.send(result);
+    });
 
 
     app.post('/users', async(req, res) =>{
@@ -82,54 +84,49 @@ app.delete('/connection/:id', async (req, res) => {
 
 
 
-    app.post('/partner', async(req, res) =>{
-      const newProduct = req.body;
-      const result = await productsCollection.insertOne(newProduct);
-      res.send(result);
-
-    });
-
-    app.get('/partner-List', async ( req, res) =>{
-      const cursor = productsCollection.find().limit(30);
+    app.post('/connection', async(req, res) =>{
+      const newProfile = req.body;
+      const newUser = await userCollection.findOne({ email: newProfile.email });
+  if (!newUser) {
+    return res.status(403).send({ message: 'User not found or not logged in' });
+  }
+   const existingProfile = await productsCollection.findOne({ email: newProfile.email });
+  if (existingProfile) {
+    return res.status(400).send({ message: 'Partner profile already exists' });
+  }
+    const result = await productsCollection.insertOne(newProfile);
+  res.send(result);
+});
+    app.get('/topList', async ( req, res) =>{
+      const cursor = topCollection.find().sort({ rating: -1 });
       const result = await cursor.toArray();
       res.send(result);
     })
+    app.post('/topList', async (req, res) => {
+  try {
+    const newProfile = req.body;
+
+    const result = await topCollection.insertOne(newProfile);
+
+    res.send({ insertedId: result.insertedId });
+  } catch (error) {
+    res.status(500).send({ message: "Failed to save in topList", error });
+  }
+});
 
      app.get('/partner', async (req, res) => {
       const email = req.query.email;
       const query = {};
       if (email) query.email = email;
 
-      const cursor = productsCollection.find(query).sort({ rating: -1 });
+      const cursor = productsCollection.find(query).limit(30);
       const result = await cursor.toArray();
       res.send(result);
     });
 
-    app.get('/partner/:id', async(req, res) => {
-      const id = req.params.id;
-      const query = {_id: new ObjectId(id)}
-      const result = await productsCollection.findOne(query);
-      res.send(result);
-    })
-
-    app.patch('/partner/:id', async(req, res) => {
-      const id = req.params.id;
-      const updatedProduct = req.body;
-      const query = {_id: new ObjectId(id)}
-      const update ={
-        $set: updatedProduct
-      }
-      const result = await productsCollection.updateOne(query, update);
-      res.send(result);
-    })
-
-    app.delete('/partner/:id', async(req, res) => {
-      const id = req.params.id;
-      const query = {_id: new ObjectId(id)}
-      const result = await productsCollection.deleteOne(query);
-      res.send(result);
-
-    })
+   
+    
+    
      await client.db("admin").command({ping: 1});
     console.log("Pinged your deployment. You successfully connected to MongoDB!");
     
